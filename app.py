@@ -88,10 +88,34 @@ def get_options():
                     "motives": motive_names
                 })
 
+        # 4. Calcular Estatísticas Dinâmicas para a barra inferior
+        classes_count = len(list(onto.classes()))
+        
+        absent_student_cls = onto["AbsentStudent"]
+        regular_student_cls = onto["RegularStudent"]
+        
+        absent_instances = set(absent_student_cls.instances()) if absent_student_cls else set()
+        regular_instances = set(regular_student_cls.instances()) if regular_student_cls else set()
+        
+        # Filtrar apenas indivíduos reais (ignorar metaclasses punadas)
+        absent_instances = {x for x in absent_instances if not isinstance(x, ThingClass)}
+        regular_instances = {x for x in regular_instances if not isinstance(x, ThingClass)}
+        
+        total_students_count = len(students)
+        classified_count = len(absent_instances.union(regular_instances))
+        conformity_percentage = int((classified_count / total_students_count) * 100) if total_students_count > 0 else 0
+
         return jsonify({
             "facilities": sorted(facilities),
             "motives": sorted(motives),
-            "students": students
+            "students": students,
+            "stats": {
+                "students_count": total_students_count,
+                "classes_count": classes_count,
+                "reasoners_count": 1,
+                "cqs_count": 6,
+                "conformity_percentage": conformity_percentage
+            }
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
@@ -125,6 +149,10 @@ def add_student():
                 motive_individual = onto[motive]
                 if motive_individual:
                     new_student.hasAbsenceMotive.append(motive_individual)
+            else:
+                # Fechar o mundo para o motivo de ausência (Open World Assumption):
+                # declara explicitamente que o estudante não possui motivos excludentes.
+                new_student.is_a.append(Not(onto.hasAbsenceMotive.some(onto.ExcludedFactor)))
             
             # Salvar ontologia
             onto.save(file=os.path.abspath("Ontologia_base.rdf"))
@@ -199,10 +227,31 @@ def add_session():
 def run_reasoner():
     try:
         onto, w = load_ontology()
-        # Executar HermiT no mundo isolado
+        # 1. Executar HermiT no mundo isolado
         sync_reasoner_hermit(w)
-        # Salvar as inferências
-        onto.save(file=os.path.abspath("Ontologia_base.rdf"))
+        
+        # 2. Capturar classificações conceituais dos estudantes
+        inferred = {}
+        for s in onto.individuals():
+            inferred[s.name] = [
+                cls.name for cls in s.is_a
+                if hasattr(cls, 'name') and cls.name in ['AbsentStudent', 'RegularStudent']
+            ]
+            
+        # 3. Recarregar em um novo World limpo para forçar gravação física no RDF
+        clean_onto, clean_w = load_ontology()
+        for name, classes in inferred.items():
+            s = clean_onto[name]
+            if s:
+                for cls_name in classes:
+                    cls = clean_onto[cls_name]
+                    if cls not in s.is_a:
+                        with clean_onto:
+                            s.is_a.append(cls)
+                            
+        # 4. Salvar as inferências persistidas no arquivo físico
+        clean_onto.save(file=os.path.abspath("Ontologia_base.rdf"))
+        
         return jsonify({"success": "Raciocínio HermiT concluído com sucesso e inferências salvas!"})
     except Exception as e:
         return jsonify({"error": f"Falha no Raciocinador: {str(e)}"}), 500

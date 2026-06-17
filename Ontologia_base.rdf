@@ -604,6 +604,7 @@
   <participatesInScreening rdf:resource="#Screening_Shinji"/>
   <studentParticipatesInRefusalClassification rdf:resource="#Classification_Shinji"/>
   <studentStudiesAtSession rdf:resource="#AlternativeLearningSession_Shinji"/>
+  <rdf:type rdf:resource="#AbsentStudent"/>
   <hasDaysAbsent rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">35</hasDaysAbsent>
 </owl:NamedIndividual>
 
@@ -719,7 +720,88 @@
 
 <owl:NamedIndividual rdf:about="#Nagisa_Kaworu_Test">
   <rdf:type rdf:resource="#Student"/>
+  <studentStudiesAtSession rdf:resource="#teste"/>
   <hasDaysAbsent rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">50</hasDaysAbsent>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Paulo_Absent">
+  <rdf:type rdf:resource="#Student"/>
+  <rdf:type>
+    <owl:Class>
+      <owl:complementOf>
+        <owl:Restriction>
+          <owl:onProperty rdf:resource="#hasAbsenceMotive"/>
+          <owl:someValuesFrom rdf:resource="#ExcludedFactor"/>
+        </owl:Restriction>
+      </owl:complementOf>
+    </owl:Class>
+  </rdf:type>
+  <rdf:type rdf:resource="#AbsentStudent"/>
+  <hasDaysAbsent rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">40</hasDaysAbsent>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Paulo_Regular">
+  <rdf:type rdf:resource="#Student"/>
+  <hasAbsenceMotive rdf:resource="#Fracture"/>
+  <hasDaysAbsent rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">40</hasDaysAbsent>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Paulo">
+  <rdf:type rdf:resource="#Student"/>
+  <rdf:type>
+    <owl:Class>
+      <owl:complementOf>
+        <owl:Restriction>
+          <owl:onProperty rdf:resource="#hasAbsenceMotive"/>
+          <owl:someValuesFrom rdf:resource="#ExcludedFactor"/>
+        </owl:Restriction>
+      </owl:complementOf>
+    </owl:Class>
+  </rdf:type>
+  <hasDaysAbsent rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">25</hasDaysAbsent>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Paulioteste">
+  <rdf:type rdf:resource="#Student"/>
+  <rdf:type>
+    <owl:Class>
+      <owl:complementOf>
+        <owl:Restriction>
+          <owl:onProperty rdf:resource="#hasAbsenceMotive"/>
+          <owl:someValuesFrom rdf:resource="#ExcludedFactor"/>
+        </owl:Restriction>
+      </owl:complementOf>
+    </owl:Class>
+  </rdf:type>
+  <rdf:type rdf:resource="#AbsentStudent"/>
+  <hasDaysAbsent rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">43</hasDaysAbsent>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#teste4">
+  <rdf:type rdf:resource="#Student"/>
+  <hasAbsenceMotive rdf:resource="#Fracture"/>
+  <hasDaysAbsent rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">34</hasDaysAbsent>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#teste">
+  <rdf:type rdf:resource="#AlternativeLearningSession"/>
+  <facilityOccursInSession rdf:resource="#Gainax"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Plan_teste">
+  <rdf:type rdf:resource="#StudyPlan"/>
+  <planParticipatesInSession rdf:resource="#teste"/>
+  <planParticipatesInTrial rdf:resource="#Trial_teste"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Trial_teste">
+  <rdf:type rdf:resource="#DirectorsTrial"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Record_teste">
+  <rdf:type rdf:resource="#StudentRecord"/>
+  <recordCreatedInTrial rdf:resource="#Trial_teste"/>
+  <deliveryTo rdf:resource="#Central_Office_MEXT"/>
 </owl:NamedIndividual>
 
 <owl:AsymmetricProperty rdf:about="http://purl.org/nemo/gufo#wasCreatedIn">
@@ -728,18 +810,10 @@
 
 <owl:AllDisjointClasses>
   <owl:members rdf:parseType="Collection">
-    <rdf:Description rdf:about="#EducationSupportCenter"/>
-    <rdf:Description rdf:about="#FreeSchool"/>
-    <rdf:Description rdf:about="#HomeICT"/>
-    <rdf:Description rdf:about="#InSchoolSupportCenter"/>
-  </owl:members>
-</owl:AllDisjointClasses>
-
-<owl:AllDisjointClasses>
-  <owl:members rdf:parseType="Collection">
-    <rdf:Description rdf:about="#EconomicReason"/>
-    <rdf:Description rdf:about="#MedicalIllness"/>
-    <rdf:Description rdf:about="#UnjustifiedParentalBelief"/>
+    <rdf:Description rdf:about="#ActivityReport"/>
+    <rdf:Description rdf:about="#StudentRecord"/>
+    <rdf:Description rdf:about="#StudyPlan"/>
+    <rdf:Description rdf:about="#SupportSheet"/>
   </owl:members>
 </owl:AllDisjointClasses>
 
@@ -756,10 +830,18 @@
 
 <owl:AllDisjointClasses>
   <owl:members rdf:parseType="Collection">
-    <rdf:Description rdf:about="#ActivityReport"/>
-    <rdf:Description rdf:about="#StudentRecord"/>
-    <rdf:Description rdf:about="#StudyPlan"/>
-    <rdf:Description rdf:about="#SupportSheet"/>
+    <rdf:Description rdf:about="#EconomicReason"/>
+    <rdf:Description rdf:about="#MedicalIllness"/>
+    <rdf:Description rdf:about="#UnjustifiedParentalBelief"/>
+  </owl:members>
+</owl:AllDisjointClasses>
+
+<owl:AllDisjointClasses>
+  <owl:members rdf:parseType="Collection">
+    <rdf:Description rdf:about="#EducationSupportCenter"/>
+    <rdf:Description rdf:about="#FreeSchool"/>
+    <rdf:Description rdf:about="#HomeICT"/>
+    <rdf:Description rdf:about="#InSchoolSupportCenter"/>
   </owl:members>
 </owl:AllDisjointClasses>
 

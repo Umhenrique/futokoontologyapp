@@ -72,6 +72,24 @@ async function loadOptions() {
 
             tableBody.appendChild(tr);
         });
+
+        // 5. Atualizar Estatísticas na Barra Inferior
+        if (data.stats) {
+            const statSts = document.getElementById('stat-students');
+            const statCls = document.getElementById('stat-classes');
+            const statRea = document.getElementById('stat-reasoners');
+            const statCqs = document.getElementById('stat-cqs');
+            
+            if (statSts) statSts.textContent = data.stats.students_count;
+            if (statCls) statCls.textContent = data.stats.classes_count;
+            if (statRea) statRea.textContent = data.stats.reasoners_count;
+            if (statCqs) statCqs.textContent = data.stats.cqs_count;
+            
+            const metaContainer = document.getElementById('stat-students-meta');
+            if (metaContainer) {
+                metaContainer.innerHTML = `<span class="trend-green">▲ ${data.stats.conformity_percentage}%</span> classificados`;
+            }
+        }
     } catch (error) {
         console.error('Erro ao carregar opções:', error);
     }
