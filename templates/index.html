@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FutokoOntology - Painel Administrativo de Recusa Escolar</title>
+    <meta name="description" content="Interface interativa para povoamento e consulta SPARQL da Ontologia de Recusa Escolar (SRO) baseada na gUFO.">
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Navbar Superior Editorial -->
+    <nav class="top-nav">
+        <div class="nav-container">
+            <div class="nav-logo">FutokoOntology.</div>
+            <div class="nav-links">
+                <a href="#" class="nav-link active">Home</a>
+                <a href="https://github.com/Umhenrique/FutokoOntology" target="_blank" class="nav-link">GitHub</a>
+                <a href="https://nemo-ufes.github.io/gufo/" target="_blank" class="nav-link">gUFO Docs</a>
+            </div>
+            <div class="nav-right">
+                <button class="btn btn-outline" id="nav-btn-docs">Documentação</button>
+                <button class="btn btn-dark" id="nav-btn-signin">Acessar Sistema</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Header Hero Section (Estilo Editorial Academic) -->
+    <header class="app-header">
+        <div class="header-container">
+            <span class="hero-label">FOR ADMINISTRATIVE SCHOOL REFUSAL RECORDING</span>
+            <h1 class="hero-title">Query the logic, <span class="italic-indigo">validate the ontology.</span></h1>
+            <p class="hero-desc">
+                FutokoOntology fornece um mapeamento em tempo de execução para registrar, classificar e validar o fluxo de processos da recusa escolar (Futoko) no Japão com base na gUFO. Adicione estudantes, crie sessões e audite as questões de competência de forma transparente.
+            </p>
+            <div class="hero-actions">
+                <a href="#control-panel-section" class="btn btn-dark">Povoar Ontologia</a>
+                <a href="#cqs-section" class="btn btn-light">Rodar Questões (SPARQL)</a>
+            </div>
+        </div>
+    </header>
+
+    <main class="app-main">
+        <!-- Seção de Controle e Povoamento -->
+        <section class="control-panel" id="control-panel-section">
+            <!-- Povoamento Section -->
+            <div class="card glass">
+                <h2>Povoamento Manual</h2>
+                <p class="card-desc">Adicione indivíduos e crie relacionamentos na ontologia local em tempo real.</p>
+                
+                <div class="tabs">
+                    <button class="tab-btn active" id="tab-student" onclick="switchTab('student')">Novo Estudante</button>
+                    <button class="tab-btn" id="tab-session" onclick="switchTab('session')">Sessão Alternativa</button>
+                </div>
+
+                <!-- Formulário Estudante -->
+                <form id="form-student" class="tab-content active" onsubmit="submitStudent(event)">
+                    <div class="form-group">
+                        <label for="student-name">Nome do Estudante (ID)</label>
+                        <input type="text" id="student-name" placeholder="Ex: Ikari_Shinji" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="student-days">Dias de Ausência</label>
+                        <input type="number" id="student-days" min="0" placeholder="Ex: 35" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="student-motive">Motivo de Ausência Excludente</label>
+                        <select id="student-motive">
+                            <option value="None">Nenhum (Potencial Recusa Escolar)</option>
+                            <!-- Povoado dinamicamente -->
+                        </select>
+                    </div>
+                    <button type="submit" id="btn-submit-student" class="btn btn-dark">Registrar Estudante</button>
+                </form>
+
+                <!-- Formulário Sessão Alternativa -->
+                <form id="form-session" class="tab-content" onsubmit="submitSession(event)">
+                    <div class="form-group">
+                        <label for="session-student">Estudante</label>
+                        <select id="session-student" required>
+                            <!-- Povoado dinamicamente -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="session-facility">Instalação de Aprendizagem</label>
+                        <select id="session-facility" required>
+                            <!-- Povoado dinamicamente -->
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="session-name">Nome da Sessão (ID)</label>
+                        <input type="text" id="session-name" placeholder="Ex: Session_Shinji" required>
+                    </div>
+                    <button type="submit" id="btn-submit-session" class="btn btn-dark">Registrar Sessão & Vincular Fluxo</button>
+                </form>
+            </div>
+
+            <!-- Raciocinador Section -->
+            <div class="card glass sync-card">
+                <h2>Raciocinador da Ontologia</h2>
+                <p class="card-desc">Execute o classificador lógico HermiT para processar as regras equivalentes de recusa escolar.</p>
+                <div class="reasoner-action">
+                    <button id="btn-run-reasoner" class="btn btn-light" onclick="runReasoner()">
+                        <span id="reasoner-btn-text">Rodar Raciocinador HermiT</span>
+                        <div id="reasoner-spinner" class="spinner hidden"></div>
+                    </button>
+                </div>
+                <div id="reasoner-status" class="status-box">Status: Aguardando execução...</div>
+            </div>
+            
+            <!-- Lista de Estudantes Carregados -->
+            <div class="card glass list-card">
+                <h2>Estudantes na Base</h2>
+                <div class="table-container">
+                    <table id="students-table">
+                        <thead>
+                            <tr>
+                                <th>Estudante</th>
+                                <th>Dias Ausente</th>
+                                <th>Motivos</th>
+                            </tr>
+                        </thead>
+                        <tbody id="students-table-body">
+                            <!-- Inserido dinamicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- Questões de Competência Section -->
+        <section class="cq-panel" id="cqs-section">
+            <h2 class="section-title">Questões de Competência (CQs) da ORSD</h2>
+            <p class="section-desc">Execute as consultas SPARQL individuais sobre a ontologia mapeada no diretório.</p>
+            
+            <div class="cq-grid">
+                <!-- CQ1 -->
+                <div class="cq-card glass" id="cq-card-1">
+                    <div class="cq-header">
+                        <span class="cq-badge">CQ1</span>
+                        <h3>Classificação de Recusa Escolar (Futoko)</h3>
+                    </div>
+                    <p class="cq-desc">Retorna estudantes oficialmente classificados na classe lógica <code>AbsentStudent</code>.</p>
+                    <button id="btn-run-cq-1" class="btn btn-cq" onclick="runCQ(1)">Executar Consulta</button>
+                </div>
+
+                <!-- CQ2 -->
+                <div class="cq-card glass" id="cq-card-2">
+                    <div class="cq-header">
+                        <span class="cq-badge">CQ2</span>
+                        <h3>Fatores de Exclusão</h3>
+                    </div>
+                    <p class="cq-desc">Motivos de ausência excludentes que impedem classificação de recusa escolar.</p>
+                    <button id="btn-run-cq-2" class="btn btn-cq" onclick="runCQ(2)">Executar Consulta</button>
+                </div>
+
+                <!-- CQ3 -->
+                <div class="cq-card glass" id="cq-card-3">
+                    <div class="cq-header">
+                        <span class="cq-badge">CQ3</span>
+                        <h3>Atores do Fluxo</h3>
+                    </div>
+                    <p class="cq-desc">Agentes administrativos envolvidos no registro e acompanhamento de ausência.</p>
+                    <button id="btn-run-cq-3" class="btn btn-cq" onclick="runCQ(3)">Executar Consulta</button>
+                </div>
+
+                <!-- CQ4 -->
+                <div class="cq-card glass" id="cq-card-4">
+                    <div class="cq-header">
+                        <span class="cq-badge">CQ4</span>
+                        <h3>Instrumentos Documentais</h3>
+                    </div>
+                    <p class="cq-desc">Listagem de documentos que formalizam a transferência de informações.</p>
+                    <button id="btn-run-cq-4" class="btn btn-cq" onclick="runCQ(4)">Executar Consulta</button>
+                </div>
+
+                <!-- CQ5 -->
+                <div class="cq-card glass" id="cq-card-5">
+                    <div class="cq-header">
+                        <span class="cq-badge">CQ5</span>
+                        <h3>Frequência Externa</h3>
+                    </div>
+                    <p class="cq-desc">Sessões alternativas de aprendizado e instalações de frequência válidas.</p>
+                    <button id="btn-run-cq-5" class="btn btn-cq" onclick="runCQ(5)">Executar Consulta</button>
+                </div>
+
+                <!-- CQ6 -->
+                <div class="cq-card glass" id="cq-card-6">
+                    <div class="cq-header">
+                        <span class="cq-badge">CQ6</span>
+                        <h3>Eventos de Transição</h3>
+                    </div>
+                    <p class="cq-desc">Eventos na ontologia que definem mudanças e fases de suporte do aluno.</p>
+                    <button id="btn-run-cq-6" class="btn btn-cq" onclick="runCQ(6)">Executar Consulta</button>
+                </div>
+            </div>
+
+            <!-- Console de Resultados -->
+            <div class="card glass console-card">
+                <div class="console-header">
+                    <h2>Console de Resultados SPARQL</h2>
+                    <span id="console-cq-num" class="hidden">CQ0</span>
+                </div>
+                <div class="console-body">
+                    <div class="query-block">
+                        <h3>Query SPARQL Executada</h3>
+                        <pre><code id="console-query" class="language-sparql"># Selecione uma CQ acima para rodar...</code></pre>
+                    </div>
+                    <div class="results-block">
+                        <h3>Dados Retornados</h3>
+                        <div id="console-output" class="console-output-text">Nenhum dado executado.</div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Seção de Estatísticas (Igual ao rodapé da imagem do usuário) -->
+    <section class="stats-section">
+        <div class="stats-container">
+            <span class="stats-label">ONTOLOGY STATUS & STATISTICS</span>
+            <div class="stats-grid">
+                <div class="stat-box">
+                    <div class="stat-number" id="stat-students">6</div>
+                    <div class="stat-desc">estudantes carregados</div>
+                    <div class="stat-meta"><span class="trend-green">▲ 99%</span> em conformidade</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">35</div>
+                    <div class="stat-desc">classes conceituais</div>
+                    <div class="stat-meta"><span class="trend-gray">● in sync</span> com a gUFO</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">1</div>
+                    <div class="stat-desc">raciocinador ativo</div>
+                    <div class="stat-meta">motor HermiT</div>
+                </div>
+                <div class="stat-box">
+                    <div class="stat-number">6</div>
+                    <div class="stat-desc">questões de competência</div>
+                    <div class="stat-meta">cobertura ORSD total</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <footer class="app-footer">
+        <p>FutokoOntology · Desenvolvido para fins de validação do processo administrativo de recusa escolar. Mapeamentos locais persistidos.</p>
+    </footer>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

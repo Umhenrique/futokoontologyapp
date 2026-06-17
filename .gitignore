@@ -1,0 +1,22 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Cose e ambientes virtuais
+.venv/
+venv/
+ENV/
+env/
+
+# Arquivos de log e configurações de IDEs
+.vscode/
+.idea/
+*.log
+
+# Scripts de teste/rascunho locais
+test_load.py
+test_reasoner_api.py
+Ontologia_base.properties
+gufo_base.properties
+Owlready2_-_Introducao.pdf
