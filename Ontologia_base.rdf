@@ -618,6 +618,18 @@
   <facilityOccursInSession rdf:resource="#Gainax"/>
 </owl:NamedIndividual>
 
+<owl:NamedIndividual rdf:about="#AbsenceDuration_Shinji">
+  <rdf:type rdf:resource="#AbsenceDuration"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#PsychosocialFactor_Shinji">
+  <rdf:type rdf:resource="#PsychosocialFactor"/>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#Gainax">
+  <rdf:type rdf:resource="#FreeSchool"/>
+</owl:NamedIndividual>
+
 <owl:NamedIndividual rdf:about="#Ayanami_Rei">
   <rdf:type rdf:resource="#Student"/>
   <hasAbsenceMotive rdf:resource="#Fracture"/>
@@ -639,10 +651,6 @@
   <rdf:type rdf:resource="#InterventionPlanning"/>
 </owl:NamedIndividual>
 
-<owl:NamedIndividual rdf:about="#Gainax">
-  <rdf:type rdf:resource="#FreeSchool"/>
-</owl:NamedIndividual>
-
 <owl:NamedIndividual rdf:about="#Ikari_Gendo">
   <rdf:type rdf:resource="#Director"/>
   <rdf:type rdf:resource="#Parent"/>
@@ -653,14 +661,6 @@
 
 <owl:NamedIndividual rdf:about="#Trial_Shinji">
   <rdf:type rdf:resource="#DirectorsTrial"/>
-</owl:NamedIndividual>
-
-<owl:NamedIndividual rdf:about="#AbsenceDuration_Shinji">
-  <rdf:type rdf:resource="#AbsenceDuration"/>
-</owl:NamedIndividual>
-
-<owl:NamedIndividual rdf:about="#PsychosocialFactor_Shinji">
-  <rdf:type rdf:resource="#PsychosocialFactor"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#Katsuragi_Misato">

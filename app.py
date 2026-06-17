@@ -8,13 +8,13 @@ app = Flask(__name__)
 PREDEFINED_ONTOLOGIES["http://purl.org/nemo/gufo#/1.0.0"] = os.path.abspath("gufo_base.rdf")
 onto_path.append(os.path.abspath("."))
 
-# Carregar ontologia globalmente
-onto = None
+# Carregar ontologia com isolamento por World
 def load_ontology():
-    global onto
-    onto = get_ontology(os.path.abspath("Ontologia_base.rdf")).load()
-
-load_ontology()
+    w = World()
+    # Mapear e carregar a gUFO localmente para evitar download remoto
+    w.get_ontology("http://purl.org/nemo/gufo#/1.0.0").load(fileobj=open(os.path.abspath("gufo_base.rdf"), "rb"))
+    onto = w.get_ontology("file://" + os.path.abspath("Ontologia_base.rdf").replace("\\", "/")).load()
+    return onto, w
 
 # Prefixo padrão para consultas SPARQL
 prefixes = """
@@ -33,7 +33,7 @@ def index():
 @app.route('/api/options', methods=['GET'])
 def get_options():
     try:
-        load_ontology()  # Recarregar para garantir dados atualizados
+        onto, w = load_ontology()
         
         # 1. Recuperar instalações de aprendizado (indivíduos ou classes)
         facilities = []
@@ -41,9 +41,13 @@ def get_options():
         if learning_facility_cls:
             for subclass in learning_facility_cls.subclasses():
                 for inst in subclass.instances():
+                    if isinstance(inst, ThingClass):
+                        continue
                     if inst.name not in facilities:
                         facilities.append(inst.name)
             for inst in learning_facility_cls.instances():
+                if isinstance(inst, ThingClass):
+                    continue
                 if inst.name not in facilities:
                     facilities.append(inst.name)
                 
@@ -53,9 +57,13 @@ def get_options():
         if excluded_factor_cls:
             for subclass in excluded_factor_cls.subclasses():
                 for inst in subclass.instances():
+                    if isinstance(inst, ThingClass):
+                        continue
                     if inst.name not in motives:
                         motives.append(inst.name)
             for inst in excluded_factor_cls.instances():
+                if isinstance(inst, ThingClass):
+                    continue
                 if inst.name not in motives:
                     motives.append(inst.name)
 
@@ -64,7 +72,14 @@ def get_options():
         student_cls = onto["Student"]
         if student_cls:
             for s in student_cls.instances():
+                if isinstance(s, ThingClass):
+                    continue
                 days = s.hasDaysAbsent[0] if s.hasDaysAbsent else 0
+                if not isinstance(days, (int, float)):
+                    try:
+                        days = int(days)
+                    except:
+                        days = str(days)
                 # Obter motivos
                 motive_names = [m.name for m in s.hasAbsenceMotive]
                 students.append({
@@ -94,7 +109,7 @@ def add_student():
         if days_absent is None:
             return jsonify({"error": "Dias de ausência são obrigatórios."}), 400
 
-        load_ontology()
+        onto, w = load_ontology()
         
         with onto:
             # Verificar se já existe
@@ -129,7 +144,7 @@ def add_session():
         if not student_name or not facility_name or not session_name:
             return jsonify({"error": "Estudante, local e nome da sessão são obrigatórios."}), 400
 
-        load_ontology()
+        onto, w = load_ontology()
 
         with onto:
             # Verificar se a sessão já existe
@@ -183,9 +198,9 @@ def add_session():
 @app.route('/api/run_reasoner', methods=['POST'])
 def run_reasoner():
     try:
-        load_ontology()
-        # Executar HermiT
-        sync_reasoner_hermit()
+        onto, w = load_ontology()
+        # Executar HermiT no mundo isolado
+        sync_reasoner_hermit(w)
         # Salvar as inferências
         onto.save(file=os.path.abspath("Ontologia_base.rdf"))
         return jsonify({"success": "Raciocínio HermiT concluído com sucesso e inferências salvas!"})
@@ -241,9 +256,9 @@ def run_cq():
         if not query:
             return jsonify({"error": "Questão de Competência inválida."}), 400
 
-        load_ontology()  # Garantir carregamento mais recente das inferências
+        onto, w = load_ontology()  # Garantir carregamento mais recente das inferências
         
-        results = list(default_world.sparql(query))
+        results = list(w.sparql(query))
         
         # Formatar a tabela de saída
         formatted_results = []
