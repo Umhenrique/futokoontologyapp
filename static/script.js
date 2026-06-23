@@ -267,3 +267,122 @@ async function runCQ(cqNum) {
         consoleOutput.textContent = `Erro de conexão: ${error.message}`;
     }
 }
+
+// Controle de arquivo selecionado
+let selectedFile = null;
+
+function handleFileSelect(event) {
+    const files = event.target.files;
+    const fileMsg = document.getElementById('file-msg');
+    const submitBtn = document.getElementById('btn-submit-upload');
+    
+    if (files.length > 0) {
+        selectedFile = files[0];
+        fileMsg.textContent = `Arquivo selecionado: ${selectedFile.name}`;
+        submitBtn.disabled = false;
+    } else {
+        selectedFile = null;
+        fileMsg.textContent = 'ou arraste e solte o PDF aqui';
+        submitBtn.disabled = true;
+    }
+}
+
+// Submeter upload de PDF
+async function submitUpload(event) {
+    if (!selectedFile) return;
+    
+    const btn = document.getElementById('btn-submit-upload');
+    const fileMsg = document.getElementById('file-msg');
+    
+    btn.disabled = true;
+    btn.textContent = 'Enviando e Povoando...';
+    
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    
+    try {
+        const response = await fetch('/api/upload_pdf', {
+            method: 'POST',
+            body: formData
+        });
+        
+        const result = await response.json();
+        
+        if (response.ok) {
+            alert(result.success);
+            
+            // Exibir preview
+            const previewBox = document.getElementById('upload-preview');
+            const dataList = document.getElementById('preview-data-list');
+            
+            previewBox.classList.remove('hidden');
+            dataList.innerHTML = '';
+            
+            const fieldLabels = {
+                "student_name": "Estudante",
+                "gender": "Gênero",
+                "school_name": "Escola",
+                "grade": "Série/Ano",
+                "class_name": "Turma",
+                "homeroom_teacher": "Prof. Regente",
+                "administrator": "Administrador",
+                "absent_days": "Dias de Ausência",
+                "support_facility": "Local de Apoio",
+                "facility_type": "Tipo de Apoio"
+            };
+            
+            for (const [key, value] of Object.entries(result.data)) {
+                const li = document.createElement('li');
+                li.innerHTML = `<span class="label">${fieldLabels[key] || key}:</span> <span class="value">${value}</span>`;
+                dataList.appendChild(li);
+            }
+            
+            // Resetar
+            selectedFile = null;
+            document.getElementById('pdf-file').value = '';
+            fileMsg.textContent = 'ou arraste e solte o PDF aqui';
+            
+            // Recarregar os estudantes e opções na tela
+            await loadOptions();
+        } else {
+            alert(`Erro: ${result.error}`);
+        }
+    } catch (error) {
+        alert(`Falha na comunicação: ${error.message}`);
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Confirmar & Popular Ontologia';
+    }
+}
+
+// Configurar eventos de Drag & Drop quando o DOM carregar
+document.addEventListener('DOMContentLoaded', () => {
+    const dropArea = document.getElementById('file-drop-area');
+    if (dropArea) {
+        ['dragenter', 'dragover'].forEach(eventName => {
+            dropArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropArea.classList.add('dragover');
+            }, false);
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            dropArea.addEventListener(eventName, (e) => {
+                e.preventDefault();
+                dropArea.classList.remove('dragover');
+            }, false);
+        });
+
+        dropArea.addEventListener('drop', (e) => {
+            e.preventDefault();
+            const dt = e.dataTransfer;
+            const files = dt.files;
+            if (files.length > 0) {
+                const fileInput = document.getElementById('pdf-file');
+                fileInput.files = files;
+                handleFileSelect({ target: { files: files } });
+            }
+        }, false);
+    }
+});
+

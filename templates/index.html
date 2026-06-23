@@ -33,12 +33,13 @@
         <section class="control-panel" id="control-panel-section">
             <!-- Povoamento Section -->
             <div class="card glass">
-                <h2>Povoamento Manual</h2>
-                <p class="card-desc">Adicione indivíduos e crie relacionamentos na ontologia local em tempo real.</p>
+                <h2>Povoamento da Ontologia</h2>
+                <p class="card-desc">Adicione indivíduos e crie relacionamentos na ontologia local manualmente ou a partir de formulários PDF.</p>
                 
                 <div class="tabs">
                     <button class="tab-btn active" id="tab-student" onclick="switchTab('student')">Novo Estudante</button>
                     <button class="tab-btn" id="tab-session" onclick="switchTab('session')">Sessão Alternativa</button>
+                    <button class="tab-btn" id="tab-upload" onclick="switchTab('upload')">Carregar PDF (Inglês)</button>
                 </div>
 
                 <!-- Formulário Estudante -->
@@ -81,6 +82,30 @@
                     </div>
                     <button type="submit" id="btn-submit-session" class="btn btn-dark">Registrar Sessão & Vincular Fluxo</button>
                 </form>
+
+                <!-- Formulário Upload PDF -->
+                <div id="form-upload" class="tab-content">
+                    <div class="form-group">
+                        <label>Ficha de Acompanhamento (PDF em Inglês)</label>
+                        <div class="file-drop-area" id="file-drop-area">
+                            <span class="fake-btn">Escolher PDF</span>
+                            <span class="file-msg" id="file-msg">ou arraste e solte o PDF aqui</span>
+                            <input class="file-input" type="file" id="pdf-file" accept=".pdf" onchange="handleFileSelect(event)">
+                        </div>
+                    </div>
+                    <div style="margin-top: 0.5rem; text-align: right;">
+                        <a href="/api/download_fillable" class="download-link" style="font-size: 0.8rem; color: var(--primary); text-decoration: none; font-weight: 500;" download>
+                            📥 Baixar Modelo PDF Preenchível
+                        </a>
+                    </div>
+                    <div id="upload-preview" class="upload-preview-box hidden">
+                        <h4>Dados Detectados:</h4>
+                        <ul id="preview-data-list">
+                            <!-- Povoado via JS -->
+                        </ul>
+                    </div>
+                    <button type="button" id="btn-submit-upload" class="btn btn-dark" onclick="submitUpload(event)" style="margin-top: 1rem; width: 100%;" disabled>Confirmar & Popular Ontologia</button>
+                </div>
             </div>
 
             <!-- Raciocinador Section -->

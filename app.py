@@ -1,6 +1,8 @@
 import os
 from flask import Flask, jsonify, render_template, request
 from owlready2 import *
+from werkzeug.utils import secure_filename
+import pdf_parser
 
 app = Flask(__name__)
 
@@ -152,7 +154,15 @@ def add_student():
             else:
                 # Fechar o mundo para o motivo de ausência (Open World Assumption):
                 # declara explicitamente que o estudante não possui motivos excludentes.
-                new_student.is_a.append(Not(onto.hasAbsenceMotive.some(onto.ExcludedFactor)))
+                negation_motive = Not(onto.hasAbsenceMotive.some(onto.ExcludedFactor))
+                if negation_motive not in new_student.is_a:
+                    new_student.is_a.append(negation_motive)
+            
+            # Novo estudante adicionado manualmente não possui de início sessão/registro escolar,
+            # então fechamos a OWA para o registro escolar entregue ao MEXT.
+            negation_record = Not(onto.hasStudentRecord.some(onto.StudentRecord & onto.deliveryTo.value(onto["Central_Office_MEXT"])))
+            if negation_record not in new_student.is_a:
+                new_student.is_a.append(negation_record)
             
             # Salvar ontologia
             onto.save(file=os.path.abspath("Ontologia_base.rdf"))
@@ -215,6 +225,12 @@ def add_session():
             mext = onto["Central_Office_MEXT"]
             if mext:
                 student_record.deliveryTo = mext
+
+            # Se a sessão for registrada, o estudante passa a ter registro escolar entregue ao MEXT.
+            # Removemos a negação da OWA do registro escolar se ela existir.
+            negation_record = Not(onto.hasStudentRecord.some(onto.StudentRecord & onto.deliveryTo.value(onto["Central_Office_MEXT"])))
+            if negation_record in student.is_a:
+                student.is_a.remove(negation_record)
 
             # Salvar ontologia
             onto.save(file=os.path.abspath("Ontologia_base.rdf"))
@@ -324,6 +340,219 @@ def run_cq():
         })
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route('/api/upload_pdf', methods=['POST'])
+def upload_pdf():
+    try:
+        if 'file' not in request.files:
+            return jsonify({"error": "Nenhum arquivo enviado."}), 400
+        
+        file = request.files['file']
+        if file.filename == '':
+            return jsonify({"error": "Nenhum arquivo selecionado."}), 400
+        
+        if not file.filename.lower().endswith('.pdf'):
+            return jsonify({"error": "Apenas arquivos PDF são suportados."}), 400
+            
+        # Garantir diretório de upload
+        upload_dir = os.path.join(os.path.abspath("."), "scratch", "uploads")
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        filename = secure_filename(file.filename)
+        filepath = os.path.join(upload_dir, filename)
+        file.save(filepath)
+        
+        # Parse PDF
+        data = pdf_parser.parse_pdf_form(filepath)
+        
+        # Limpar arquivo temporário
+        if os.path.exists(filepath):
+            os.remove(filepath)
+            
+        # Popular ontologia
+        onto, w = load_ontology()
+        
+        student_name = data.get("student_name", "").strip()
+        school_name = data.get("school_name", "").strip()
+        homeroom_teacher = data.get("homeroom_teacher", "").strip()
+        administrator = data.get("administrator", "").strip()
+        absent_days = data.get("absent_days", 30)
+        support_facility = data.get("support_facility", "").strip()
+        facility_type = data.get("facility_type", "EducationSupportCenter").strip()
+        
+        if not student_name or student_name == "Unknown Student":
+            return jsonify({"error": "Não foi possível extrair o nome do estudante do PDF."}), 400
+            
+        with onto:
+            # Normalizar IDs
+            student_id = student_name.replace(" ", "_")
+            school_id = school_name.replace(" ", "_") if school_name else "Unknown_School"
+            teacher_id = homeroom_teacher.replace(" ", "_") if homeroom_teacher else "Unknown_Teacher"
+            admin_id = administrator.replace(" ", "_") if administrator else "Unknown_Administrator"
+            
+            # Criar/recuperar entidades
+            student = onto[student_id]
+            if student is None:
+                student = onto.Student(student_id)
+            student.hasDaysAbsent = [int(absent_days)]
+
+            # Fechar o mundo para o motivo de ausência (Open World Assumption):
+            # declara explicitamente que o estudante não possui motivos excludentes.
+            negation_motive = Not(onto.hasAbsenceMotive.some(onto.ExcludedFactor))
+            if negation_motive not in student.is_a:
+                student.is_a.append(negation_motive)
+                
+            # Se não houver local de apoio (não foi matriculado em centro de apoio),
+            # o estudante não possui um registro escolar entregue ao MEXT.
+            # Fechamos a OWA para o registro escolar correspondente.
+            negation_record = Not(onto.hasStudentRecord.some(onto.StudentRecord & onto.deliveryTo.value(onto["Central_Office_MEXT"])))
+            if not support_facility:
+                if negation_record not in student.is_a:
+                    student.is_a.append(negation_record)
+            else:
+                # Se tiver local de apoio, removemos a negação (se existir) para permitir a classificação como RegularStudent
+                if negation_record in student.is_a:
+                    student.is_a.remove(negation_record)
+            
+            school = onto[school_id]
+            if school is None:
+                school = onto.School(school_id)
+                
+            teacher = onto[teacher_id]
+            if teacher is None:
+                teacher = onto.Teacher(teacher_id)
+                
+            director = onto[admin_id]
+            if director is None:
+                director = onto.Director(admin_id)
+                
+            # TeamSchool
+            team_id = f"{school_id}_TeamSchool"
+            team_school = onto[team_id]
+            if team_school is None:
+                team_school = onto.TeamSchool(team_id)
+                
+            # Links de estrutura escolar
+            if school not in team_school.isComponentOfSchool:
+                team_school.isComponentOfSchool.append(school)
+            if team_school not in teacher.isMemberOfTeamSchool:
+                teacher.isMemberOfTeamSchool.append(team_school)
+            if team_school not in student.monitoredBy:
+                student.monitoredBy.append(team_school)
+                
+            # Screening
+            screening_id = f"Screening_{student_id}"
+            screening = onto[screening_id]
+            if screening is None:
+                screening = onto.Screening(screening_id)
+            if screening not in student.participatesInScreening:
+                student.participatesInScreening.append(screening)
+            if screening not in teacher.participatesInScreening:
+                teacher.participatesInScreening.append(screening)
+            if screening not in team_school.participatesInScreening:
+                team_school.participatesInScreening.append(screening)
+                
+            # SupportSheet
+            sheet_id = f"SupportSheet_{student_id}"
+            support_sheet = onto[sheet_id]
+            if support_sheet is None:
+                support_sheet = onto.SupportSheet(sheet_id)
+            if screening not in support_sheet.sheetCreatedInScreening:
+                support_sheet.sheetCreatedInScreening.append(screening)
+                
+            # ActivityReport
+            report_id = f"Report_{student_id}"
+            activity_report = onto[report_id]
+            if activity_report is None:
+                activity_report = onto.ActivityReport(report_id)
+            if screening not in activity_report.reportCreatedInScreening:
+                activity_report.reportCreatedInScreening.append(screening)
+                
+            # Se tiver instalação de apoio, preencher o fluxo de intervenção e acompanhamento
+            if support_facility:
+                facility_id = support_facility.replace(" ", "_")
+                facility_cls = onto[facility_type]
+                if facility_cls is None:
+                    facility_cls = onto.EducationSupportCenter
+                
+                facility = onto[facility_id]
+                if facility is None:
+                    facility = facility_cls(facility_id)
+                    
+                # Intervention
+                intervention_id = f"Intervention_{student_id}"
+                intervention = onto[intervention_id]
+                if intervention is None:
+                    intervention = onto.InterventionPlanning(intervention_id)
+                if intervention not in support_sheet.sheetParticipatesInIntervention:
+                    support_sheet.sheetParticipatesInIntervention.append(intervention)
+                    
+                # StudyPlan
+                study_plan_id = f"StudyPlan_{student_id}"
+                study_plan = onto[study_plan_id]
+                if study_plan is None:
+                    study_plan = onto.StudyPlan(study_plan_id)
+                if intervention not in study_plan.planCreatedInIntervention:
+                    study_plan.planCreatedInIntervention.append(intervention)
+                    
+                # AlternativeLearningSession
+                session_id = f"AlternativeLearningSession_{student_id}"
+                session = onto[session_id]
+                if session is None:
+                    session = onto.AlternativeLearningSession(session_id)
+                if session not in student.studentStudiesAtSession:
+                    student.studentStudiesAtSession.append(session)
+                if facility not in session.facilityOccursInSession:
+                    session.facilityOccursInSession.append(facility)
+                if session not in study_plan.planParticipatesInSession:
+                    study_plan.planParticipatesInSession.append(session)
+                    
+                # DirectorsTrial
+                trial_id = f"Trial_{student_id}"
+                directors_trial = onto[trial_id]
+                if directors_trial is None:
+                    directors_trial = onto.DirectorsTrial(trial_id)
+                if directors_trial not in study_plan.planParticipatesInTrial:
+                    study_plan.planParticipatesInTrial.append(directors_trial)
+                if directors_trial not in director.directorParticipatesInTrial:
+                    director.directorParticipatesInTrial.append(directors_trial)
+                    
+                # StudentRecord
+                record_id = f"Record_{student_id}"
+                student_record = onto[record_id]
+                if student_record is None:
+                    student_record = onto.StudentRecord(record_id)
+                if directors_trial not in student_record.recordCreatedInTrial:
+                    student_record.recordCreatedInTrial.append(directors_trial)
+                    
+                # Entregar ao MEXT para disparar a transição de AbsentStudent para RegularStudent
+                mext = onto["Central_Office_MEXT"]
+                if mext:
+                    student_record.deliveryTo = mext
+                    
+            # Salvar ontologia
+            onto.save(file=os.path.abspath("Ontologia_base.rdf"))
+            
+        return jsonify({
+            "success": f"Ontologia populada com sucesso a partir do documento de '{student_name}'!",
+            "data": data
+        })
+        
+    except Exception as e:
+        return jsonify({"error": f"Erro no processamento do arquivo: {str(e)}"}), 500
+
+@app.route('/api/download_fillable', methods=['GET'])
+def download_fillable():
+    try:
+        pdf_path = os.path.abspath("docs/Student Understanding Model Sheet - Fillable (English).pdf")
+        if not os.path.exists(pdf_path):
+            import subprocess
+            subprocess.run(["python", "docs/generate_fillable_pdf.py"], check=True)
+            
+        from flask import send_file
+        return send_file(pdf_path, as_attachment=True, download_name="Student_Understanding_Model_Sheet_Fillable.pdf")
+    except Exception as e:
+        return jsonify({"error": f"Erro ao gerar ou baixar o PDF preenchível: {str(e)}"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, port=5000)
