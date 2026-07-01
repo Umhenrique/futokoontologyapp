@@ -721,7 +721,13 @@
 <owl:NamedIndividual rdf:about="#Nagisa_Kaworu_Test">
   <rdf:type rdf:resource="#Student"/>
   <studentStudiesAtSession rdf:resource="#teste"/>
+  <rdf:type rdf:resource="#AbsentStudent"/>
   <hasDaysAbsent rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">50</hasDaysAbsent>
+</owl:NamedIndividual>
+
+<owl:NamedIndividual rdf:about="#teste">
+  <rdf:type rdf:resource="#AlternativeLearningSession"/>
+  <facilityOccursInSession rdf:resource="#Gainax"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#Paulo_Absent">
@@ -781,11 +787,6 @@
   <rdf:type rdf:resource="#Student"/>
   <hasAbsenceMotive rdf:resource="#Fracture"/>
   <hasDaysAbsent rdf:datatype="http://www.w3.org/2001/XMLSchema#integer">34</hasDaysAbsent>
-</owl:NamedIndividual>
-
-<owl:NamedIndividual rdf:about="#teste">
-  <rdf:type rdf:resource="#AlternativeLearningSession"/>
-  <facilityOccursInSession rdf:resource="#Gainax"/>
 </owl:NamedIndividual>
 
 <owl:NamedIndividual rdf:about="#Plan_teste">
